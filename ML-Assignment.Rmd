@@ -1,0 +1,89 @@
+---
+title: "Machine Learning Prediction Assignment Write Up"
+Author: Ritesh Gandhi
+Date: 01/25/2015
+output: html_document
+---
+
+## Synopsis
+Project involve to predict the manner in which weight lifting excersie has been done. Assigmnets provide training and test data. This write up describes the analysis being done to develop the model for prediction.
+
+## Load Data, Basic Data Analysis and Cleaning
+
+#### Loading the data
+Loading the training and test data. Its already downloaded on my System so reading those
+Path for Data download
+Training
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+Test
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+```{r cache=TRUE}
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+```
+Basic Analysis of data shows that there are many columns having "NA" values. Those columns can be eliminted for simplification. Also we can eliminate the column 1:7 as those are timestamp values, use values and series number. That won't be helpful for prediction
+Performing these operation on both training and testing data set
+```{r}
+missingCols <- sapply(training, function (x) any(is.na(x) | x == ""))
+train <- training[,!missingCols]
+train <- train[,c(-(1:7))]
+test <- testing[,!missingCols]
+test <- test[,c(-(1:7))] 
+##Assigning classe (outcome vaiable) as factor variable
+train$classe <- as.factor(train$classe)
+## Display dimension and column names 
+dim(train)
+names(train)
+```
+## Partitioning the Data Set and Pre-Processing
+Partition the training data set the into 60/40 ration to create train and test datasets and then perform the basic prepossing the train and test data sets
+
+```{r}
+library(caret)
+## Partition the dataset
+inTrain <- createDataPartition(y=train$classe, p=0.6, list=FALSE)
+mTrain <- train[inTrain,]
+mTest <- train[-inTrain,]
+```
+
+Perform Pre-processing the train and test dataset (leaving out outcome variable).
+
+```{r}
+preObj <- preProcess(mTrain[,-53], method=c("center", "scale"))
+trainObj <- predict(preObj, mTrain[,-53])
+testObj <- predict(preObj, mTest[-53])
+library(data.table)
+mTrainPro <- data.table(data.frame(classe = mTrain[,"classe"], trainObj))
+mTestPro <- data.table(data.frame(classe = mTest[, "classe"], testObj))
+dim(mTrain)
+```
+## Building and Evaluating the model
+Using Caret package and Random forest algorithm for better accuracy. Expecting Sample error to be low and would be estimating the error using train data set (estimating error to be within 10% mark)
+
+
+```{r cache=TRUE}
+## Building model with Random Forest method
+modFit <- train(classe ~ ., data=mTrainPro, method="rf")
+modFit
+
+## Test on Training data set
+pred <- predict(modFit, mTrainPro)
+confusionMatrix(pred, mTrain[, "classe"])
+
+## Test on Testing data set
+pred <- predict(modFit, mTestPro)
+confusionMatrix(pred, mTest[, "classe"])
+
+modFit$finalModel
+```
+as show from above values that accuracy is high (99%) so model can be accepted and error rate is also less than 1%
+
+## Predicting the value on Test data provided
+
+```{r}
+## removing the problem ID column
+ test <- test[,-53]
+ ftest <- predict(preObj, test)
+ finalval <- predict(modFit, ftest)
+finalval
+```
