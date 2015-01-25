@@ -85,5 +85,6 @@ as show from above values that accuracy is high (99%) so model can be accepted a
  test <- test[,-53]
  ftest <- predict(preObj, test)
  finalval <- predict(modFit, ftest)
-finalval
+result <- cbind(testing$problem_id, finalval)
+result
 ```
